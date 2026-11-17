@@ -402,13 +402,7 @@ def display_and_prompt(diagnosis: Diagnosis) -> None:
     # instead of Typer treating them as oops options.
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
-def main(
-    ctx: typer.Context,
-    command_parts: Optional[list[str]] = typer.Argument(
-        None,
-        help="Command to run and diagnose (Wrapper Mode). Example: oops python app.py",
-    ),
-) -> None:
+def main(ctx: typer.Context) -> None:
     """
     Instant AI-powered terminal crash explainer & fix generator.
 
