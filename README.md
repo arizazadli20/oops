@@ -1,9 +1,11 @@
-# wtf — AI Error & Crash Explainer
+# oops
 
-A lightweight, open-source Python CLI that diagnoses terminal errors and suggests instant fixes using the Google Gemini API.
+**Instant AI-powered terminal crash explainer & fix generator powered by Google Gemini.**
+
+When a command blows up in your terminal, run `oops` — it explains the root cause and suggests an exact fix you can run, copy, or dismiss.
 
 ```
-$ python broken.py 2>&1 | wtf
+$ python broken.py 2>&1 | oops
 
 ╭─ Root Cause ──────────────────────────────────────────╮
 │ ModuleNotFoundError: 'requests' is not installed in   │
@@ -16,16 +18,25 @@ $ python broken.py 2>&1 | wtf
 [R]un fix  [C]opy fix  [Q]uit ›
 ```
 
+## Features
+
+- **Three input modes** — Pipe, Wrapper, and History
+- **Structured Gemini analysis** — crisp root cause + exact shell fix via `gemini-2.5-flash`
+- **Interactive actions** — `[R]`un, `[C]`opy, or `[Q]`uit
+- **Destructive-fix warnings** — yellow border + `YES` confirm before risky commands
+- **Zero-cost BYOK** — your Gemini key stays local in `~/.oops_config.json` (`0600`)
+
 ## Requirements
 
 - Python 3.9+
-- A free [Gemini API key](https://aistudio.google.com/apikey) (BYOK — bring your own key)
+- A free [Gemini API key](https://aistudio.google.com/apikey)
 
 ## Installation
 
 ```bash
-# Clone or cd into the project
-cd wtf
+# Clone the repo
+git clone https://github.com/arizazadli20/oops.git
+cd oops
 
 # Create a virtual environment (recommended)
 python3 -m venv .venv
@@ -35,18 +46,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Setup: shell alias
+## Setup: global alias (`~/.zshrc`)
 
-Add a permanent alias so you can type `wtf` from anywhere.
-
-### zsh (`~/.zshrc`)
+Add a permanent alias so you can type `oops` from anywhere:
 
 ```bash
-# wtf — AI Error & Crash Explainer
-alias wtf='python3 /ABSOLUTE/PATH/TO/wtf/main.py'
+# oops — AI terminal crash explainer
+alias oops='python3 /ABSOLUTE/PATH/TO/oops/main.py'
 ```
 
-Replace `/ABSOLUTE/PATH/TO/wtf` with the real path (e.g. `~/Desktop/wtf`).
+Replace `/ABSOLUTE/PATH/TO/oops` with the real path to where you cloned the repo.
 
 Then reload your shell:
 
@@ -54,73 +63,73 @@ Then reload your shell:
 source ~/.zshrc
 ```
 
-### bash (`~/.bashrc`)
+**Tip (macOS Zsh):** add this so shell history updates immediately after a command fails — History Mode depends on it:
 
 ```bash
-alias wtf='python3 /ABSOLUTE/PATH/TO/wtf/main.py'
-source ~/.bashrc
+setopt INC_APPEND_HISTORY
 ```
 
 ### First run
 
-The first time you run `wtf`, it will securely prompt for your Gemini API key and save it to `~/.wtf_config.json` with `0600` permissions (owner-only read/write).
+The first time you run `oops`, it securely prompts for your Gemini API key and saves it to `~/.oops_config.json` with `0600` permissions (owner-only read/write).
 
 ## Usage
 
-`wtf` supports three input modes:
+### 1. History Mode
 
-### 1. Pipe Mode
-
-Pipe any failing command's output into `wtf`:
+Fail a command, then just type `oops` — it re-runs your last non-`oops` command and diagnoses it:
 
 ```bash
-python app.py 2>&1 | wtf
-npm run build 2>&1 | wtf
-docker compose up 2>&1 | wtf
+$ python app.py          # this fails
+$ oops                   # diagnoses that failure
+```
+
+### 2. Pipe Mode
+
+Pipe any failing command's output into `oops`:
+
+```bash
+python app.py 2>&1 | oops
+npm run build 2>&1 | oops
+docker compose up 2>&1 | oops
 ```
 
 > Tip: `2>&1` merges stderr into stdout so the error text reaches the pipe.
 
-### 2. Wrapper Mode
+### 3. Wrapper Mode
 
-Let `wtf` run the command for you and capture the failure:
-
-```bash
-wtf python app.py
-wtf "docker compose up"
-wtf npm test
-```
-
-If the command succeeds (exit code 0), `wtf` prints a green success message and exits.
-
-### 3. History Mode
-
-Just type `wtf` with no arguments. It reads your shell history (`~/.zsh_history` or `~/.bash_history`), finds the most recent non-`wtf` command, re-runs it, and diagnoses the error:
+Let `oops` run the command for you (flags like `-o` are passed through):
 
 ```bash
-$ python app.py          # this fails
-$ wtf                    # diagnoses that failure
+oops python app.py
+oops "docker compose up"
+oops gcc main.c -o app
+oops npm test
 ```
+
+If the command succeeds (exit code 0), `oops` prints a green success message and exits.
 
 ## Interactive actions
 
-When a fix is suggested, you can:
+When a fix is suggested:
 
 | Key | Action |
 |-----|--------|
-| `R` | Run the fix command in your shell |
-| `C` | Copy the fix to the clipboard (`pbcopy` / `wl-copy` / `xclip`) |
-| `Q` | Quit |
+| `R` | **Run** the fix command in your shell |
+| `C` | **Copy** the fix to the clipboard (`pbcopy` / `wl-copy` / `xclip`) |
+| `Q` | **Quit** |
 
-Destructive fixes (file deletion, `git reset --force`, killing processes, etc.) are highlighted with a yellow warning border, and require typing `YES` before they run.
+Destructive fixes (file deletion, `git reset --force`, killing processes, etc.) get a yellow warning border and require typing `YES` before they run.
 
 ## Project layout
 
 ```
-wtf/
+oops/
 ├── main.py           # All core logic
 ├── requirements.txt  # Python dependencies
-└── README.md         # You are here
+├── LICENSE           # MIT
+├── .gitignore
+└── README.md
 ```
 
 ## Dependencies

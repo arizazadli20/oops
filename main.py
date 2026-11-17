@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wtf — AI Error & Crash Explainer
+oops — Instant AI-powered terminal crash explainer & fix generator
 
 A lightweight CLI that diagnoses terminal errors and suggests instant fixes
 using the Google Gemini API.
@@ -33,13 +33,13 @@ from rich.syntax import Syntax
 console = Console()
 
 # Where we store the user's Gemini API key
-CONFIG_PATH = Path.home() / ".wtf_config.json"
+CONFIG_PATH = Path.home() / ".oops_config.json"
 
 # Typer app — this is the CLI entry point
 app = typer.Typer(
     add_completion=False,
     rich_markup_mode="rich",
-    help="wtf — AI Error & Crash Explainer. Diagnose terminal errors instantly.",
+    help="oops — Instant AI-powered terminal crash explainer & fix generator.",
 )
 
 
@@ -72,7 +72,7 @@ class Diagnosis(BaseModel):
 
 def load_api_key() -> str:
     """
-    Load the Gemini API key from ~/.wtf_config.json.
+    Load the Gemini API key from ~/.oops_config.json.
     If the file or key is missing, ask the user and save it.
     """
     # Try reading an existing config first
@@ -88,7 +88,7 @@ def load_api_key() -> str:
 
     # First run (or missing key): prompt the user securely
     console.print(
-        "\n[bold yellow]Welcome to wtf![/] First-time setup.\n"
+        "\n[bold yellow]Welcome to oops![/] First-time setup.\n"
         "Get a free Gemini API key at: "
         "[link=https://aistudio.google.com/apikey]https://aistudio.google.com/apikey[/]\n"
     )
@@ -105,7 +105,7 @@ def load_api_key() -> str:
 
 
 def save_api_key(key: str) -> None:
-    """Write the API key to ~/.wtf_config.json with mode 0o600."""
+    """Write the API key to ~/.oops_config.json with mode 0o600."""
     CONFIG_PATH.write_text(
         json.dumps({"gemini_api_key": key}, indent=2) + "\n",
         encoding="utf-8",
@@ -177,7 +177,7 @@ def parse_history_line(line: str) -> Optional[str]:
 
 def get_last_failed_command_from_history() -> Optional[str]:
     """
-    History Mode: find the most recent shell command that is NOT 'wtf'.
+    History Mode: find the most recent shell command that is NOT 'oops'.
     Checks ~/.zsh_history first, then falls back to ~/.bash_history.
     """
     history_files = [
@@ -204,10 +204,10 @@ def get_last_failed_command_from_history() -> Optional[str]:
             if command is None:
                 continue
 
-            # Skip any previous wtf invocations
-            # (covers "wtf", "wtf something", "./wtf", "python main.py", etc.)
+            # Skip any previous oops invocations
+            # (covers "oops", "oops something", "./oops", etc.)
             first_word = command.split()[0] if command.split() else ""
-            if first_word in ("wtf", "./wtf") or command.startswith("wtf "):
+            if first_word in ("oops", "./oops") or command.startswith("oops "):
                 continue
 
             return command
@@ -295,10 +295,9 @@ def copy_to_clipboard(text: str) -> bool:
     Tries pbcopy (macOS), then wl-copy (Wayland), then xclip (X11).
     Returns True on success, False if no clipboard tool was found.
     """
-    # List of (command, whether to pass text via stdin)
     clipboard_tools = [
-        ["pbcopy"],          # macOS
-        ["wl-copy"],         # Linux Wayland
+        ["pbcopy"],                          # macOS
+        ["wl-copy"],                         # Linux Wayland
         ["xclip", "-selection", "clipboard"],  # Linux X11
     ]
 
@@ -397,22 +396,27 @@ def display_and_prompt(diagnosis: Diagnosis) -> None:
 # Main CLI entry point
 # ---------------------------------------------------------------------------
 
-@app.callback(invoke_without_command=True)
+@app.callback(
+    invoke_without_command=True,
+    # Let flags like -o / --flag pass through to the wrapped command
+    # instead of Typer treating them as oops options.
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def main(
     ctx: typer.Context,
     command_parts: Optional[list[str]] = typer.Argument(
         None,
-        help="Command to run and diagnose (Wrapper Mode). Example: wtf python app.py",
+        help="Command to run and diagnose (Wrapper Mode). Example: oops python app.py",
     ),
 ) -> None:
     """
-    Diagnose terminal errors with AI.
+    Instant AI-powered terminal crash explainer & fix generator.
 
     \b
-    Three ways to use wtf:
-      1. Pipe Mode:    python app.py 2>&1 | wtf
-      2. Wrapper Mode: wtf python app.py
-      3. History Mode: wtf   (re-runs your last non-wtf command)
+    Three ways to use oops:
+      1. Pipe Mode:    python app.py 2>&1 | oops
+      2. Wrapper Mode: oops python app.py
+      3. History Mode: oops   (re-runs your last non-oops command)
     """
     # If the user typed a subcommand somehow, let Typer handle it
     if ctx.invoked_subcommand is not None:
@@ -424,6 +428,10 @@ def main(
     error_output: Optional[str] = None
     failed_command: Optional[str] = None
 
+    # Merge declared args with any extra/unknown options (e.g. -o app).
+    # With ignore_unknown_options, flags land in ctx.args.
+    all_parts: list[str] = list(command_parts or []) + list(ctx.args)
+
     # --- Step 2: Decide which input mode to use ---
 
     # Mode A — Pipe Mode: data was piped into stdin
@@ -434,11 +442,10 @@ def main(
         console.print("[dim]Pipe Mode — analyzing piped output…[/]")
 
     # Mode B — Wrapper Mode: user passed a command as arguments
-    elif command_parts:
-        # Join the args back into a single shell command string.
-        # If the user passed one quoted string like 'docker compose up',
-        # command_parts will be a single-element list — that's fine.
-        failed_command = " ".join(command_parts)
+    elif all_parts:
+        # Join into a single shell command string.
+        # Example: oops gcc main.c -o app  →  "gcc main.c -o app"
+        failed_command = " ".join(all_parts)
         console.print(f"[dim]Wrapper Mode — running:[/] {failed_command}")
 
         exit_code, output = run_command(failed_command)
@@ -468,7 +475,7 @@ def main(
         if not failed_command:
             console.print(
                 "[bold red]No previous command found in shell history.[/]\n"
-                "Try: [cyan]wtf <your-command>[/]  or  [cyan]<cmd> 2>&1 | wtf[/]"
+                "Try: [cyan]oops <your-command>[/]  or  [cyan]<cmd> 2>&1 | oops[/]"
             )
             raise typer.Exit(code=1)
 
